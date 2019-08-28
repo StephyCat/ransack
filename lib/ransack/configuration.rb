@@ -29,6 +29,7 @@ module Ransack
     self.options = {
       :search_key => :q,
       :ignore_unknown_conditions => true,
+      :allow_sorting_directionless => false,
       :hide_sort_order_indicators => false,
       :up_arrow => '&#9660;'.freeze,
       :down_arrow => '&#9650;'.freeze,
@@ -152,6 +153,23 @@ module Ransack
     #
     def hide_sort_order_indicators=(boolean)
       self.options[:hide_sort_order_indicators] = boolean
+    end
+
+    # By default, Ransack toggles sort order between asc & desc in sort links.
+    # If set to true, sort order will be toggled in round-robin amoung:
+    # attribute default order = 'asc'  :  [ 'asc', 'desc', nil ]
+    # attribute default order = 'desc' :  [ 'desc', 'asc', nil ]
+    #
+    # The default may be globally overridden in an initializer file like
+    # `config/initializers/ransack.rb` as follows:
+    #
+    # Ransack.configure do |config|
+    #   # Hide sort link order indicators globally across the application
+    #   config.allow_sorting_directionless = true
+    # end
+    #
+    def allow_sorting_directionless=(boolean)
+      self.options[:allow_sorting_directionless] = boolean
     end
 
     def arel_predicate_with_suffix(arel_predicate, suffix)

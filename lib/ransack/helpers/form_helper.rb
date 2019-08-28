@@ -97,17 +97,20 @@ module Ransack
 
       class SortLink
         def initialize(search, attribute, args, params)
-          @search         = search
-          @params         = parameters_hash(params)
-          @field          = attribute.to_s
-          @sort_fields    = extract_sort_fields_and_mutate_args!(args).compact
-          @current_dir    = existing_sort_direction
-          @label_text     = extract_label_and_mutate_args!(args)
-          @options        = extract_options_and_mutate_args!(args)
-          @hide_indicator = !@options[:hide_indicator].nil? ?
-                            @options.delete(:hide_indicator) :
-                            Ransack.options[:hide_sort_order_indicators]
-          @default_order  = @options.delete :default_order
+          @search              = search
+          @params              = parameters_hash(params)
+          @field               = attribute.to_s
+          @sort_fields         = extract_sort_fields_and_mutate_args!(args).compact
+          @current_dir         = existing_sort_direction
+          @label_text          = extract_label_and_mutate_args!(args)
+          @options             = extract_options_and_mutate_args!(args)
+          @allow_directionless = !@options[:allow_directionless].nil? ?
+                                 @options.delete(:allow_directionless) :
+                                 Ransack.options[:allow_sorting_directionless]
+          @hide_indicator      = !@options[:hide_indicator].nil? ?
+                                 @options.delete(:hide_indicator) :
+                                 Ransack.options[:hide_sort_order_indicators]
+          @default_order       = @options.delete :default_order
         end
 
         def up_arrow
@@ -132,7 +135,8 @@ module Ransack
         def url_options
           @params.merge(
             @options.merge(
-              @search.context.search_key => search_and_sort_params))
+              @search.context.search_key =>
+                search_and_sort_params.delete_if { |k, v| v.empty? }.presence))
         end
 
         def html_options(args)
@@ -184,7 +188,17 @@ module Ransack
 
           def recursive_sort_params_build(fields)
             return [] if fields.empty?
-            [parse_sort(fields[0])] + recursive_sort_params_build(fields.drop 1)
+            current_dir = @search.sorts.detect { |s| s && s.name == @field }.try(:dir)
+            default_opposite_dir = (
+              default_sort_order(@field).present? ?
+              inverted_direction_text(default_sort_order(@field)) :
+              'desc'.freeze
+            )
+            if @allow_directionless == true && current_dir == default_opposite_dir
+              [] + recursive_sort_params_build(fields.drop 1)
+            else
+              [parse_sort(fields[0])] + recursive_sort_params_build(fields.drop 1)
+            end
           end
 
           def parse_sort(field)
@@ -197,7 +211,7 @@ module Ransack
 
           def detect_previous_sort_direction_and_invert_it(attr_name)
             if sort_dir = existing_sort_direction(attr_name)
-              direction_text(sort_dir)
+              inverted_direction_text(sort_dir)
             else
               default_sort_order(attr_name) || 'asc'.freeze
             end
@@ -227,7 +241,8 @@ module Ransack
             dir != 'asc'.freeze && dir != 'desc'.freeze
           end
 
-          def direction_text(dir)
+          def inverted_direction_text(dir)
+            dir = dir.to_s
             return 'asc'.freeze if dir == 'desc'.freeze
             'desc'.freeze
           end
