@@ -217,9 +217,9 @@ module Ransack
             return if @hide_indicator
             return default_arrow if no_sort_direction_specified?
             if @current_dir == 'desc'.freeze
-              up_arrow
-            else
               down_arrow
+            else
+              up_arrow
             end
           end
 
